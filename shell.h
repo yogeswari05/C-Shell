@@ -26,6 +26,8 @@
 #define MAX 100
 #define MAX_ARGS 100
 #define HIST_MAX_SIZE 15
+#define MAX_PIPELINE_COMMANDS 32
+#define MAX_JOBS 100
 
 // functions declarations
 // s-1
@@ -42,7 +44,7 @@ void tokenizeExecuteCommands(char command[INP_MAX], char *commandList[MAX_CMDS],
 int commandHandler(char command[PATH_MAX_], char curWorkingDir[PATH_MAX_], char prevDir[PATH_MAX_], char homePath[PATH_MAX_], char startDirectory[PATH_MAX_]);
 void trimWhitespace(char *str);
 // s-3
-int hopHandler(char *words[PATH_MAX_], char curWorkingDir[PATH_MAX_], int wcount, char prevDir[PATH_MAX_], char startDirectory[PATH_MAX_]);
+int hopHandler(char **words, char curWorkingDir[PATH_MAX_], int wcount, char prevDir[PATH_MAX_], char startDirectory[PATH_MAX_]);
 extern int flag_prevDir__;
 // s-4
 int revealMainHandler(char **terms, int index, char startDirectory[PATH_MAX_], char prevDir[PATH_MAX_], char curWorkingDir[PATH_MAX_]);
@@ -61,27 +63,50 @@ int logExecuteHandler(int n, char *commandList[4096], char currDir[4096], char p
 void loadHistory(char startDirectory[PATH_MAX_]);
 
 // s-6
-#define MAX_BG_PROCESSES 100
-typedef struct{
-   pid_t pid;
-   char *name;
-} BackgroundProcess;
-// array of structures
-extern BackgroundProcess bgProcesses[MAX_BG_PROCESSES];
-extern int bgProcessCount;
+typedef enum
+{
+   JOB_PROCESS_RUNNING,
+   JOB_PROCESS_STOPPED,
+   JOB_PROCESS_DONE
+} JobProcessState;
 
-void sleepHandler(char *terms[], int index);
-void echoHandler(char *terms[], int index);
-void addBackgroundProcess(pid_t pid, char *name);
-void removeBackgroundProcess(pid_t pid);
+typedef struct
+{
+   pid_t pid;
+   JobProcessState state;
+} JobProcess;
+
+typedef struct
+{
+   int id;
+   pid_t pgid;
+   char command[INP_MAX];
+   JobProcess processes[MAX_PIPELINE_COMMANDS];
+   int processCount;
+   int background;
+   int notified;
+   int used;
+} ShellJob;
+
+extern ShellJob shellJobs[MAX_JOBS];
+extern int shellInteractive;
+extern pid_t shellPgid;
+extern volatile sig_atomic_t childEvent;
+extern volatile sig_atomic_t interruptEvent;
+extern int shellExitRequested;
+
 void handle_sigchld(int sig);
 void setupSignalHandling();
-void runInBackground(char *command);
+int registerShellJob(pid_t pgid, pid_t *pids, int processCount, const char *command, int background);
+void waitForShellJob(int jobIndex);
+void pollShellEvents(void);
+int handleJobBuiltin(char **terms, int count, int inParent);
+void shutdownShell(void);
 
 // s-7
 void procloreHandler(pid_t pid);
 
 // s-8
-int seekHandler(char *words[PATH_MAX_], char curWorkingDir[PATH_MAX_], int wcount, char prevDir[PATH_MAX_], char startDirectory[PATH_MAX_]);
+int seekHandler(char **words, char curWorkingDir[PATH_MAX_], int wcount, char prevDir[PATH_MAX_], char startDirectory[PATH_MAX_]);
 
 #endif // ALLFUNCTIONS_H

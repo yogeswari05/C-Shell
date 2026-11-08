@@ -1,179 +1,60 @@
-# C Shell Documentation
+# C-Shell
 
-## Overview
+A small Unix-like command shell written in C. It combines custom filesystem and process utilities with external command execution, pipelines, redirection, and basic interactive job control.
 
-This C Shell implementation provides a variety of features and functionalities to manage directories, execute commands, handle background processes, and maintain command history. Below is a detailed explanation of each feature and its corresponding functionality.
+## Features
 
-## Features and Functionalities
+- Displays a colored prompt with the current user, host, and working directory. Foreground commands taking longer than two seconds are reported in the next prompt.
+- Runs external programs through `PATH` and provides built-ins for directory navigation, listing, search, process inspection, history, and job control.
+- Parses single- and double-quoted arguments and backslash escapes.
+- Runs commands sequentially with `;`, in the background with `&`, and connects pipeline stages with `|`.
+- Supports input redirection with `<`, output truncation with `>`, and output append with `>>`.
+- Tracks foreground and background process groups. `jobs`, `fg`, and `bg` list and resume jobs; terminal signals such as Ctrl+C and Ctrl+Z apply to the foreground job.
+- Saves up to 15 recent commands in `history.txt` in the directory where the shell starts. Consecutive duplicate entries are skipped.
+- Sends `SIGHUP` to remaining jobs and restores terminal ownership when exiting.
 
-### 1. Directory Management
+## Built-In Commands
 
-- **Get Current Working Directory**
-  - Function: `getCurrWorkingDir`
-  - Retrieves the current working directory and stores it in the provided buffer.
+- `hop [directory ...]` changes directory. Supports the starting directory (`~`), the previous directory (`-`), and relative or absolute paths. With no argument, returns to the starting directory.
+- `reveal [-a] [-l] [directory]` lists directory entries. `-a` includes hidden entries; `-l` displays permissions, ownership, size, and modification time. Names are color-coded by file type.
+- `seek [-d|-f] [-e] <prefix> [directory]` recursively searches for names beginning with the given prefix. `-d` selects directories, `-f` selects files, and `-e` acts on a unique match: it changes into a directory or prints a file's contents.
+- `proclore [pid]` displays process state, process group, virtual-memory information, and executable path using Linux `/proc` data. Without a PID, it reports the shell process.
+- `log` prints command history; `log purge` clears it; `log execute <n>` re-runs a saved entry, where `1` refers to the most recent entry.
+- `jobs` lists tracked jobs. `fg <job-id|pid>` brings a job to the foreground; `bg <job-id|pid>` resumes it in the background. Job IDs can be written as `%1`.
+- `exit` or Ctrl+D exits the shell.
 
-- **Change Directory**
-  - Function: `changeDirectory`
-  - Changes the current working directory to the specified path. Handles special cases like `~` and `..`.
+## Operators
 
-- **Get Hostname**
-  - Function: `getHostName_`
-  - Retrieves the hostname of the system.
+```sh
+sleep 5; printf '%s\n' "hello world" | wc -l
+cat < input.txt | sort > output.txt
+printf '%s\n' "background task" > task.txt &
+```
 
-- **Get Username**
-  - Function: `getUserName`
-  - Retrieves the username of the current user.
+## Build and Run
 
-### 2. Command Handling
+Build on a Linux/POSIX environment with GCC and GNU Make:
 
-- **Tokenize and Execute Commands**
-  - Function: `tokenizeExecuteCommands`
-  - Tokenizes the input command string and executes each command sequentially. Supports background execution using `&`.
+```sh
+make
+./a.out
+```
 
-- **Command Handler**
-  - Function: `commandHandler`
-  - Handles individual commands by invoking the appropriate function based on the command name.
+Use `make clean` to remove the executable.
 
-- **Trim Whitespace**
-  - Function: `trimWhitespace`
-  - Removes leading and trailing whitespace from a string.
+## Source Layout
 
-### 3. Directory Navigation
+- `main.c` starts the shell and manages the prompt/input loop.
+- `shell.h` contains shared declarations and limits.
+- `command_parser.c` parses and executes commands, pipelines, and redirections.
+- `directory.c` provides working-directory, user, and host information.
+- `hop.c`, `reveal.c`, `seek.c`, and `proclore.c` implement the corresponding built-ins.
+- `history.c` handles persistent command history.
+- `jobs.c` manages process groups, signals, and job control.
+- `Makefile` builds the shell.
 
-- **Hop Handler**
-  - Function: `hopHandler`
-  - Handles the `hop` command to change directories. Supports special cases like `~` and `-`.
+## Platform and Limits
 
-### 4. File and Directory Listing
+The shell uses POSIX process and terminal APIs; `proclore` specifically requires Linux `/proc`. The input buffer is limited to 4,096 bytes, each command to 100 arguments, pipelines to 32 stages, and the job table to 100 jobs.
 
-- **Reveal Main Handler**
-  - Function: `revealMainHandler`
-  - Handles the `reveal` command to list files and directories. Supports flags `-a` for all files and `-l` for detailed information.
-
-- **Print Detailed Info**
-  - Function: `printDetailedInfo`
-  - Prints detailed information about a file or directory.
-
-- **Print with Colors**
-  - Function: `printWithColors`
-  - Prints file or directory names with color coding based on their type.
-
-### 5. Command History
-
-- **Load History**
-  - Function: `loadHistory`
-  - Loads command history from a file.
-
-- **Save History**
-  - Function: `saveHistory`
-  - Saves command history to a file.
-
-- **Add Command to History**
-  - Function: `addCommandToHist`
-  - Adds a command to the history, avoiding duplicates.
-
-- **Print Total History**
-  - Function: `printTotalHist`
-  - Prints the entire command history.
-
-- **Remove Unnecessary Spaces and Tabs**
-  - Function: `removeUncessecarySpaceTabs`
-  - Removes unnecessary spaces and tabs from a string.
-
-- **Log Purge Handler**
-  - Function: `logPurgeHandler`
-  - Handles the `log purge` command to clear the command history.
-
-- **Log Execute Handler**
-  - Function: `logExecuteHandler`
-  - Handles the `log execute` command to re-execute a command from history.
-
-### 6. Background Process Management
-
-- **Setup Signal Handling**
-  - Function: `setupSignalHandling`
-  - Sets up signal handling for background processes.
-
-- **Add Background Process**
-  - Function: `addBackgroundProcess`
-  - Adds a background process to the list of background processes.
-
-- **Remove Background Process**
-  - Function: `removeBackgroundProcess`
-  - Removes a background process from the list of background processes.
-
-- **Handle SIGCHLD**
-  - Function: `handle_sigchld`
-  - Handles the `SIGCHLD` signal to clean up terminated background processes.
-
-- **Run in Background**
-  - Function: `runInBackground`
-  - Executes a command in the background.
-
-### 7. Process Information
-
-- **Proclore Handler**
-  - Function: `procloreHandler`
-  - Handles the `proclore` command to display detailed information about a process.
-
-### 8. File Search
-
-- **Seek Handler**
-  - Function: `seekHandler`
-  - Handles the `seek` command to search for files and directories. Supports flags `-d` for directories, `-f` for files, and `-e` for executing the found file or changing to the found directory.
-
-## Available Commands
-
-### hop
-
-- **Description**: Changes the current directory.
-- **Usage**: `hop [directory]`
-- **Examples**:
-  - `hop ~` - Changes to the home directory.
-  - `hop -` - Changes to the previous directory.
-
-### reveal
-
-- **Description**: Lists files and directories.
-- **Usage**: `reveal [-a] [-l] [directory]`
-- **Examples**:
-  - `reveal -a` - Lists all files including hidden ones.
-  - `reveal -l` - Lists files with detailed information.
-
-### log
-
-- **Description**: Manages command history.
-- **Usage**: 
-  - `log` - Prints the command history.
-  - `log purge` - Clears the command history.
-  - `log execute [n]` - Re-executes the nth command from history.
-
-### proclore
-
-- **Description**: Displays detailed information about a process.
-- **Usage**: `proclore [pid]`
-- **Examples**:
-  - `proclore` - Displays information about the current process.
-  - `proclore 1234` - Displays information about the process with PID 1234.
-
-### seek
-
-- **Description**: Searches for files and directories.
-- **Usage**: `seek [-d] [-f] [-e] target [directory]`
-- **Examples**:
-  - `seek -d target` - Searches for directories matching the target.
-  - `seek -f target` - Searches for files matching the target.
-  - `seek -e target` - Executes or changes to the found file or directory.
-
-## Usage
-
-To use this C Shell, compile the source files and run the resulting executable. The shell supports various built-in commands as described above. For example:
-
-- `hop ~` to change to the home directory.
-- `reveal -a -l` to list all files and directories with detailed information.
-- `log purge` to clear the command history.
-- `seek -d target` to search for directories matching the target.
-
-## Conclusion
-
-This C Shell provides a comprehensive set of features for managing directories, executing commands, handling background processes, and maintaining command history. It is designed to be a functional and user-friendly shell environment.
+The parser does not perform variable or command substitution, wildcard expansion, or logical `&&`/`||` evaluation. Redirection is limited to standard input and standard output; stderr redirection and heredocs are not implemented. Aliases, shell functions, `iMan`, `neonate`, and `ping` are not part of this source version.

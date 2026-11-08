@@ -1,0 +1,15 @@
+sleep 1
+jobs
+exit
+printf '%s\n' "hello world" | wc -l
+exit
+echo hello
+sleep 2 &
+jobs
+exit
+echo hello
+sleep 2 &
+jobs
+exit
+echo hello
+exit
